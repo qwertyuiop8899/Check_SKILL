@@ -1,3 +1,7 @@
+---
+name: check
+description: Perform a strict read-only audit and diagnostic analysis of systems, VPS metrics, codebases, or logs without modifying anything or proposing action plans. Trigger when the user uses /check, check, /check deep, or check deep, or asks for a read-only inspection of CPU, memory, disk space, network traffic, service failures, or logs.
+---
 # Check (Read-Only Audit & Diagnostics)
 
 Execute a strict read-only inspection of the target system, VPS, service, logs, or codebase, delivering only the diagnostic results at the requested depth without making changes or proposing remediation plans.
@@ -41,18 +45,44 @@ Determine how the target is being inspected:
 
 - **Provided Data (Logs/Metrics/Code in prompt):** Analyze the pasted output, log files, or codebase directly.
 - **Local/Connected Workspace (Agentic IDE/CLI):** Run read-only diagnostic commands to gather live telemetry.
-- **Remote VPS (No direct shell access):** Since direct remote SSH execution from a sandboxed chat environment is not possible, provide a single, copy-pasteable read-only diagnostic one-liner for the user to run on the VPS (or ask for the relevant log/metric output) and analyze the returned results immediately.
+- **Remote VPS (No direct shell access):** Provide a single, copy-pasteable read-only diagnostic command for the user to run on the VPS and analyze the returned results immediately.
 
 #### Read-Only VPS Diagnostic One-Liner (Reference)
 
-When the user needs to collect metrics from a remote Linux VPS manually, provide this exact non-destructive command matching the requested depth:
+    echo "=== SYSTEM & CPU ===" && uptime && lscpu | grep "Model name\|CPU(s):" && \
+    echo "=== MEMORY ===" && free -h && \
+    echo "=== DISK ===" && df -hT -x tmpfs -x devtmpfs && \
+    echo "=== TOP PROCESSES ===" && ps aux --sort=-%cpu | head -n 6 && ps aux --sort=-%mem | head -n 6 && \
+    echo "=== NETWORK & PORTS ===" && ss -tulnp && ip -s link && \
+    echo "=== FAILED SERVICES ===" && systemctl --failed --no-pager && \
+    echo "=== DOCKER (IF PRESENT) ===" && (docker ps -a && docker stats --no-stream 2>/dev/null || true) && \
+    echo "=== RECENT CRITICAL LOGS ===" && journalctl -p 3 -xb -n 30 --no-pager 2>/dev/null
 
-```bash
-echo "=== SYSTEM & CPU ===" && uptime && lscpu | grep "Model name\|CPU(s):" && \
-echo "=== MEMORY ===" && free -h && \
-echo "=== DISK ===" && df -hT -x tmpfs -x devtmpfs && \
-echo "=== TOP PROCESSES ===" && ps aux --sort=-%cpu | head -n 6 && ps aux --sort=-%mem | head -n 6 && \
-echo "=== NETWORK & PORTS ===" && ss -tulnp && ip -s link && \
-echo "=== FAILED SERVICES ===" && systemctl --failed --no-pager && \
-echo "=== DOCKER (IF PRESENT) ===" && (docker ps -a && docker stats --no-stream 2>/dev/null || true) && \
-echo "=== RECENT CRITICAL LOGS ===" && journalctl -p 3 -xb -n 30 --no-pager 2>/dev/null
+### Step 2: Analyze Pillars
+
+Evaluate the target across four diagnostic pillars:
+
+1. **Compute & Memory:** CPU load vs. core count, steal time, RAM saturation, OOM killer invocations, and swap thrashing.
+2. **Storage:** Disk usage percentages (flagging partitions above 80%), inode exhaustion, and disk I/O bottlenecks.
+3. **Network & Traffic:** Open listening ports, unusual connection states (`TIME_WAIT`, `SYN_RECV`), bandwidth spikes, and packet drops/errors.
+4. **Failures & Logs:** Systemd failed units, container crash loops (`OOMKilled`, non-zero exit codes), authentication failures, and application stack traces.
+
+### Step 3: Format the Report
+
+Deliver the findings strictly using the structure below. Stop immediately after the findings.
+
+    ## [STATUS: HEALTHY | WARNING | CRITICAL] - Target Summary
+
+    ### Metrics Overview
+    - **CPU:** <load / usage details>
+    - **Memory & Swap:** <RAM / swap details>
+    - **Disk:** <storage / inode details>
+    - **Network:** <traffic / socket details>
+
+    ### Failures & Log Findings
+    - <Timestamp / Service / File>: <Exact finding and technical root cause>
+
+## Gotchas
+
+- **Never drift into problem-solving:** Stop strictly after reporting the diagnostic facts. Do not add action items or remediation suggestions.
+- **Never alter state to test a hypothesis:** Do not restart services, clear caches, rotate logs, or modify files.
