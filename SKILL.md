@@ -11,6 +11,7 @@ Execute a strict read-only inspection of the target system, VPS, service, logs, 
 - The user invokes `/check` or `check` for a standard, high-level diagnostic overview.
 - The user invokes `/check deep` or `check deep` for an exhaustive, granular technical inspection.
 - The user requests an audit of VPS/server health (CPU, RAM, disk space, network traffic), service failures, or error logs without wanting modifications or action plans.
+- description: Perform a strict read-only audit and diagnostic analysis of systems, VPS metrics, codebases, or logs without modifying anything or proposing action plans. Trigger when the user uses /check, check, /check deep, check deep, /check-deep, or check-deep, or asks for a read-only inspection of CPU, memory, disk space, network traffic, service failures, or logs.
 
 ## Core Constraints (Strict Read-Only Mode)
 
